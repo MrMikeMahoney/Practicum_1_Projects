@@ -1,0 +1,232 @@
+---
+title: "Practicum Exam 1_Final"
+author: "Mike Mahoney"
+date: "March 4, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(haven)
+library(dplyr)
+library(standardize)
+library(NbClust)
+library(cluster)
+library(ggplot2)
+library(psych)
+library(matrixStats)
+library(fpc)
+```
+## Loading In our Exported SAS Datasets >> For Practicum 1 Exam
+```{r}
+true_value <- read_sas("C:/Users/Mike/Documents/Practicum 1/Exam_1/var_data_sets/true_value_export.sas7bdat")
+car_purpose <- read_sas("C:/Users/Mike/Documents/Practicum 1/Exam_1/var_data_sets/car_purpose_export.sas7bdat")
+ask_advice <- read_sas("C:/Users/Mike/Documents/Practicum 1/Exam_1/var_data_sets/ask_advice_export.sas7bdat")
+before_buy <- read_sas("C:/Users/Mike/Documents/Practicum 1/Exam_1/var_data_sets/before_buy_export.sas7bdat")
+foreign_prestige <- read_sas("C:/Users/Mike/Documents/Practicum 1/Exam_1/var_data_sets/foreign_prestige_export.sas7bdat")
+foreign_hq <- read_sas("C:/Users/Mike/Documents/Practicum 1/Exam_1/var_data_sets/foriegn_hq_export.sas7bdat")
+plan_ahead <- read_sas("C:/Users/Mike/Documents/Practicum 1/Exam_1/var_data_sets/plan_ahead_export.sas7bdat")
+shop_bargains <- read_sas("C:/Users/Mike/Documents/Practicum 1/Exam_1/var_data_sets/shop_bargains_export.sas7bdat")
+special_offers <- read_sas("C:/Users/Mike/Documents/Practicum 1/Exam_1/var_data_sets/special_offers_export.sas7bdat")
+unknown_brands <- read_sas("C:/Users/Mike/Documents/Practicum 1/Exam_1/var_data_sets/unknown_brands_export.sas7bdat")
+```
+## Subsetting our Data sets >> Getting rid of the Junk >> Only keeping "my_id" and unique column
+```{r}
+true_value <- true_value[,c(1,13)]
+car_purpose <- car_purpose[,c(1,13)]
+ask_advice <- ask_advice[,c(1,13)]
+before_buy <- before_buy[,c(1,13)]
+foreign_prestige <- foreign_prestige[,c(1,13)]
+foreign_hq <- foreign_hq[,c(1,13)]
+plan_ahead <- plan_ahead[,c(1,13)]
+shop_bargains <- shop_bargains[,c(1,13)]
+special_offers <- special_offers[,c(1,13)]
+unknown_brands <- unknown_brands[,c(1,13)]
+```
+## Merge our created data sets by "my_id" >> to "master_ms" >> Megre was not working >> So If found it easier to rbind >> THen remove the extra 9 "my_id"s
+>> Made sure the NAs were 0
+```{r}
+master_ms <- NULL
+master_ms <- cbind(true_value, car_purpose, ask_advice, before_buy, foreign_prestige, foreign_hq, plan_ahead, shop_bargains, special_offers, unknown_brands)
+master_ms <- master_ms[,c(1,2,4,6,8,10,12,14,16,18,20)] # removing the my_id when all 10 vars we 
+master_ms[is.na(master_ms)] <- 0
+pca_master_ms <- master_ms[,2:11] # Removing "my_id" just in case
+```
+## PCA >> Using master_ms >> my_id is indexed out >> To perform principal component analysis, to reduce our dimensions down from 10 to ?? >> Currently we have a 10 dimensional space which is ugly and extremely confusing (if you watch a Dr Kaku video) >> So we want to reduce this space to managable and understandable dimensions
+```{r}
+exam_pca <- principal(master_ms[,2:11], nfactors = 2, rotate= "promax", residuals = TRUE);exam_pca
+#exam_pca <- prcomp(master_ms[,2:11], scale. = TRUE)
+names(exam_pca)
+exam_pca$values
+exam_pca$n.obs
+exam_pca$loadings
+exam_pca$fit
+```
+## Using Scree plot in library(psych) >> It shows the Eigenvalues to determine the best number of factors to use
+```{r}
+scree_plot <- VSS.scree(master_ms[,2:11],main="Scree plot")
+```
+## #5 - Cluser Analysis >> Standarizing THe Predictor Variables >> Re adding "my_id" and changing name from "V1"
+```{r}
+master_ms_stz <- master_ms
+master_ms_stz <- scale(as.matrix(master_ms[,2:11]))
+master_ms_stz <- cbind(master_ms$my_id, master_ms_stz)
+colnames(master_ms_stz)[1] <- "my_id"
+#is.standardized(master_ms_stz[,2:11])
+```
+## K-means Clustering >> Going to try differenct "k"s >> knn_master_ms_k
+```{r}
+knn_master_ms_3 <- kmeans(master_ms_stz[,2:11], 3)#;knn_master_ms_3 # 3 clusters
+knn_master_ms_4 <- kmeans(master_ms_stz[,2:11], 4)#;knn_master_ms_4 # 4 clusters
+knn_master_ms_5 <- kmeans(master_ms_stz[,2:11], 5)#;knn_master_ms_5 # 5 Clusters #### WINNER
+knn_master_ms_6 <- kmeans(master_ms_stz[,2:11], 6)#;knn_master_ms_6 # 6 clusters
+knn_master_ms_7 <- kmeans(master_ms_stz[,2:11], 7)#;knn_master_ms_7 # 7 Clusters, Ahhh haha haha
+```
+## Calculating thee Psudeo F >> Which is the Between Cluster Sum of Squared / Witin Cluster Sum of Squares >> KMeans inclues on the Value List >> betweenss: between cluster sum of squares, total.withinss: total within cluster sum of squares, length(knn_master_ms_4$size): finds the number of clusters
+```{r}
+NBClust_pseudo_F_3 <- (knn_master_ms_3$betweenss/(length(knn_master_ms_5$size)-1))/(knn_master_ms_3$tot.withinss/(sum(knn_master_ms_3$size)-length(knn_master_ms_3$size)))
+NBClust_pseudo_F_4 <- (knn_master_ms_4$betweenss/(length(knn_master_ms_4$size)-1))/(knn_master_ms_4$tot.withinss/(sum(knn_master_ms_4$size)-length(knn_master_ms_4$size)))
+NBClust_pseudo_F_5 <- (knn_master_ms_5$betweenss/(length(knn_master_ms_5$size)-1))/(knn_master_ms_5$tot.withinss/(sum(knn_master_ms_5$size)-length(knn_master_ms_5$size)))
+NBClust_pseudo_F_6 <- (knn_master_ms_6$betweenss/(length(knn_master_ms_6$size)-1))/(knn_master_ms_6$tot.withinss/(sum(knn_master_ms_6$size)-length(knn_master_ms_6$size)))
+NBClust_pseudo_F_7 <- (knn_master_ms_7$betweenss/(length(knn_master_ms_7$size)-1))/(knn_master_ms_7$tot.withinss/(sum(knn_master_ms_7$size)-length(knn_master_ms_7$size)))
+# Creating a list with our clusters Psuedo F
+NBClust_psudeo_List <- c(NBClust_pseudo_F_3, NBClust_pseudo_F_4, NBClust_pseudo_F_5, NBClust_pseudo_F_6, NBClust_pseudo_F_7)
+Clusters_List <- c(3:7)
+Psudeo_F_DF <- data.frame(Clusters_List, NBClust_psudeo_List)
+```
+## Calculating the R^2 >> In our clustering example >> Can be caluclated by Between cluster Sum of Squares / Total Sum of Squares >> for each cluster 3:7
+```{r}
+r_sq_3 <- knn_master_ms_3$betweenss / knn_master_ms_3$totss
+r_sq_4 <- knn_master_ms_4$betweenss / knn_master_ms_4$totss
+r_sq_5 <- knn_master_ms_5$betweenss / knn_master_ms_5$totss
+r_sq_6 <- knn_master_ms_6$betweenss / knn_master_ms_6$totss
+r_sq_7 <- knn_master_ms_7$betweenss / knn_master_ms_7$totss
+r_sq_list <- c(r_sq_3, r_sq_4, r_sq_5, r_sq_6, r_sq_7)*100
+r_sq_DF <- data.frame(Clusters_List, r_sq_list)
+```
+### K-means >> getting the  cubic clustering criterion (ccc) >> it is the Value_index >> and is $Best.nc >> Voodoo Chicken Bones
+```{r}
+knn_master_ms_NBClust <- NbClust(master_ms_stz[,2:11], min.nc = 3, max.nc=7, method = "kmeans",
+                                 index="ccc")
+knn_master_ms_NBClust$Best.nc
+knn_master_ms_NBClust$All.index
+knn_master_ms_NBClust$Best.partition
+CCC_list <- knn_master_ms_NBClust$All.index
+```
+
+## Create a dataframe with all of our diagnostic statistics >> Psuedo_F, R-Squared, CCC and Cluster Numbers
+```{r}
+diag_stats <- data.frame(Clusters_List, NBClust_psudeo_List, r_sq_list, CCC_list)#; diag_stats
+colnames(diag_stats)[1] <- "N Cluster"
+colnames(diag_stats)[2] <- "Psuedo F Stat"
+colnames(diag_stats)[3] <- "R Squared"
+colnames(diag_stats)[4] <- "CCC"
+diag_stats
+```
+###### Using GGPLOT to plots some graphs
+## R-Squared
+```{r}
+R_Squared_plot <- ggplot(data = diag_stats, aes(x =diag_stats[1], y = diag_stats[3])) +
+  geom_line(color = "purple") +
+  geom_point() +
+  xlab("Number of Clusters") +
+  ylab("R Squared in Percentages") +
+  theme(text = element_text(size=18)) 
+R_Squared_plot
+```
+## Psuedo F Statistic Plot
+```{r}
+Psuedo_F_plot <- ggplot(data = diag_stats, aes(x =diag_stats[1], y = diag_stats[2])) +
+  geom_line(color = "blue") +
+  geom_point() +
+  xlab("Number of Clusters") +
+  ylab("Psuedo F Statistic") +
+  theme(text = element_text(size=18))
+Psuedo_F_plot
+```
+## CCC_plot
+```{r}
+CCC_plot <- ggplot(data = diag_stats, aes(x =diag_stats[1], y = diag_stats[4])) +
+  geom_line(color = "red") +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype="dashed", color = "blue") +
+  xlab("Number of Clusters") +
+  ylab("Cubic Clustering Criterion") +
+  theme(text = element_text(size=18))
+CCC_plot
+```
+## Trying another GAP >> Trying to get 7 >> Takes 23 minutes
+#```{r}
+start_clock <- proc.time()
+gap_cluster_update <- clusGap(master_ms_stz[,2:11], FUN = kmeans, K.max = 6, B = 5)
+end_clock <- proc.time() - start_clock
+#```
+## Getting values from >> gap_cluster_update >> Tab
+```{r}
+gap_cluster_update$Tab
+gap_cluster_update$call
+#gap_cluster_update$FUNcluster
+gap_cluster_update$B
+```
+```{r}
+K <- maxSE(gap_cluster_update$Tab[, "gap"], gap_cluster_update$Tab[, "SE.sim"], method = "Tibs2001SEmax")
+gap_results_1 <- kmeans(master_ms_stz[,2:11], K)
+```
+###### Our final Cluster Analysis >> Using K means >> Utilizing 6 clusters obtained from our GAP analysis
+```{r}
+knn_master_ms_6 <- kmeans(master_ms_stz[,2:11], 6)
+knn_master_ms_6$centers
+knn_master_ms_6$size
+```
+## Crating a dataframe: knn_cluster_stats_means_sd_df >> With each row Standard Deviation and Means >> For the standardized variables
+```{r}
+knn_cluster_stats <- as.matrix(knn_master_ms_6$centers)
+knn_cluster_stats_means<- rowMeans(knn_cluster_stats)
+knn_cluster_stats_sd <- rowSds(knn_cluster_stats)
+knn_cluster_stats_means_sd_df <- data.frame(knn_master_ms_6$size, knn_cluster_stats_sd, knn_cluster_stats_means)
+```
+## Creating a dataframe: knn_6_means_sd_df >> With each column Standard Deviation and Means >> For the standardized variables
+```{r}
+knn_master_ms_6$centers
+knn_6_df <- as.matrix(knn_master_ms_6$centers)
+knn_6_means <- colMeans(knn_6_df)
+knn_6_sd <- colSds(knn_6_df)
+knn_6_means_sd_df <- data.frame(knn_6_sd, knn_6_means)
+```
+
+## Getting un standarized cluster means >> Putting in a dataframe: un_stand_means_df
+```{r}
+un_stand_means <- colMeans(master_ms[,2:11])
+un_stad_sd <- colSds(as.matrix(master_ms[,2:11]))
+un_stand_means_df <- data.frame(un_stand_means, un_stad_sd)
+un_stand_means_df <- t(un_stand_means_df) # Transposing our dataframe to save space
+```
+## Importing our non-drivers >> Creating a master data set of our drivers and non_drivers: master_ms_non_drivers
+```{r}
+non_drivers <- read_sas("C:/Users/Mike/Documents/Practicum 1/Exam_1/var_data_sets/non_drivers_1.sas7bdat")
+non_drivers[is.na(non_drivers)] <- 0
+#master_ms_non_drivers <- cbind(master_ms, non_drivers[2:5])
+```
+## Finding mean on non-drivers
+```{r}
+non_drivers_col_means <- colMeans(non_drivers[2:5])
+non_drivers_means_df <- data.frame(non_drivers_col_means)
+```
+## Standardizing the Data Frame: master_ms_non_drivers >> Which contains our drivers and our non drivers
+```{r}
+non_drivers_means_stz <- scale(as.matrix(non_drivers_means_df))
+master_ms_non_drivers_stz <- cbind(master_ms_stz, scale(non_drivers[2:5]))
+```
+### Kmeans Clusering with our non_drivers >> using: master_ms_non_drivers_stz >> Contains Standardized Drivers and Non-Driver variables
+```{r}
+knn_master_both_6 <- kmeans(master_ms_non_drivers_stz[,2:15], 6)#;knn_master_both_6
+knn_master_both_6$centers#[11:14]
+knn_master_both_6$size
+colnames(Knn_master_both_6_means_sd_df)[1] <- "Standard Deviations"
+colnames(Knn_master_both_6_means_sd_df)[2] <- "Means"
+```
+### Cluster Plot
+```{r}
+clust_plot <- clusplot(master_ms_non_drivers_stz[,2:15], knn_master_both_6$cluster, color = TRUE, lines = 0, main = "Cluster Plot")
+```
+
