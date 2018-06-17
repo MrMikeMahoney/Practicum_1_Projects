@@ -38,6 +38,10 @@ The first exam consist of performing a customer segmentation from a massive data
       DA6823_Module_3_Part_1_Mahoney_Mike,
       DA6823_Module_3_Part_2_Mahoney_Mike
       
+  The 2 Exercises (HW's):
+    The first is the precursor to Exam 1: DA6823_HW1_Mahoney_Mike.docx >>
+    The second, utilizing SQL: DA6823_HW1_Mahoney_Mike.docx
+      
 Thank you for reading and I hope you enjoy it,
 
 Mike Mahoney
